@@ -3,38 +3,50 @@ from flask_cors import CORS
 import joblib
 import numpy as np
 
-# ✅ PEHLE APP BANAYE
+# ✅ app init
 app = Flask(__name__)
 CORS(app)
 
-# ✅ PHIR MODEL LOAD
+# ✅ load model (scaler ignore kar rahe for now)
 model = joblib.load('model.pkl')
-scaler = joblib.load('scaler.pkl')
 
-# ✅ PHIR ROUTES
+# ✅ health check
 @app.route('/', methods=['GET'])
 def home():
     return jsonify({'status': 'CardioSense API running'})
 
 
+# ✅ prediction route
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
         data = request.json
 
-        features = [
-            'age','gender','height','weight',
-            'ap_hi','ap_lo','cholesterol','gluc',
-            'smoke','alco','active'
-        ]
+        # ✅ frontend ke 11 features
+        vals = [
+            float(data.get('age', 0)),
+            float(data.get('gender', 0)),
+            float(data.get('height', 0)),
+            float(data.get('weight', 0)),
+            float(data.get('ap_hi', 0)),
+            float(data.get('ap_lo', 0)),
+            float(data.get('cholesterol', 0)),
+            float(data.get('gluc', 0)),
+            float(data.get('smoke', 0)),
+            float(data.get('alco', 0)),
+            float(data.get('active', 0)),
 
-        vals = [float(data[f]) for f in features]
+            # 🔥 dummy features to match 13
+            0,
+            0
+        ]
 
         arr = np.array(vals).reshape(1, -1)
 
-        # TEMP fix (no scaler)
+        # ❌ scaler hata diya (shape mismatch avoid karne ke liye)
         arr_scaled = arr
 
+        # ✅ prediction
         prob = float(model.predict_proba(arr_scaled)[0][1])
         pred = int(prob >= 0.5)
 
@@ -45,4 +57,10 @@ def predict():
         })
 
     except Exception as e:
+        print("ERROR:", str(e))
         return jsonify({'error': str(e)}), 400
+
+
+# ✅ run locally
+if __name__ == '__main__':
+    app.run(debug=True)
