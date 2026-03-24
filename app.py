@@ -3,50 +3,48 @@ from flask_cors import CORS
 import joblib
 import numpy as np
 
-# ✅ app init
+# ✅ Initialize app
 app = Flask(__name__)
 CORS(app)
 
-# ✅ load model (scaler ignore kar rahe for now)
+# ✅ Load trained model & scaler
 model = joblib.load('model.pkl')
+scaler = joblib.load('scaler.pkl')
 
-# ✅ health check
+# ✅ Health check route
 @app.route('/', methods=['GET'])
 def home():
     return jsonify({'status': 'CardioSense API running'})
 
 
-# ✅ prediction route
+# ✅ Prediction route
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
         data = request.json
 
-        # ✅ frontend ke 11 features
+        # ✅ Input features (same as training)
         vals = [
-            float(data.get('age', 0)),
-            float(data.get('gender', 0)),
-            float(data.get('height', 0)),
-            float(data.get('weight', 0)),
-            float(data.get('ap_hi', 0)),
-            float(data.get('ap_lo', 0)),
-            float(data.get('cholesterol', 0)),
-            float(data.get('gluc', 0)),
-            float(data.get('smoke', 0)),
-            float(data.get('alco', 0)),
-            float(data.get('active', 0)),
-
-            # 🔥 dummy features to match 13
-            0,
-            0
+            float(data['age']),
+            float(data['gender']),
+            float(data['height']),
+            float(data['weight']),
+            float(data['ap_hi']),
+            float(data['ap_lo']),
+            float(data['cholesterol']),
+            float(data['gluc']),
+            float(data['smoke']),
+            float(data['alco']),
+            float(data['active'])
         ]
 
+        # Convert to array
         arr = np.array(vals).reshape(1, -1)
 
-        # ❌ scaler hata diya (shape mismatch avoid karne ke liye)
-        arr_scaled = arr
+        # Scale input
+        arr_scaled = scaler.transform(arr)
 
-        # ✅ prediction
+        # Prediction
         prob = float(model.predict_proba(arr_scaled)[0][1])
         pred = int(prob >= 0.5)
 
@@ -57,10 +55,9 @@ def predict():
         })
 
     except Exception as e:
-        print("ERROR:", str(e))
         return jsonify({'error': str(e)}), 400
 
 
-# ✅ run locally
+# ✅ Run locally
 if __name__ == '__main__':
     app.run(debug=True)
